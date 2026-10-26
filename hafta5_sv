@@ -1,0 +1,76 @@
+// en altta tek bitlik toplayıcı var
+module full_adder (
+    input  logic a,
+    input  logic b,
+    input  logic cin,
+    output logic sum,
+    output logic cout
+);
+
+    assign sum  = a ^ b ^ cin;
+    assign cout = (a & b) | (a & cin) | (b & cin);
+
+endmodule
+
+
+// 4 bit toplama çıkarma burda yapılıyo
+module adder_subtractor_4bit (
+    input  logic [3:0] A,
+    input  logic [3:0] B,
+    input  logic       sub,
+    output logic [4:0] result
+);
+
+    logic [3:0] bx;
+    logic [3:0] s;
+    logic [4:0] carry;
+
+    assign bx = B ^ {4{sub}};
+    assign carry[0] = sub;
+
+    genvar i;
+    generate
+        for (i = 0; i < 4; i = i + 1) begin : fa_chain
+            full_adder fa (
+                .a(A[i]),
+                .b(bx[i]),
+                .cin(carry[i]),
+                .sum(s[i]),
+                .cout(carry[i+1])
+            );
+        end
+    endgenerate
+
+    assign result = {carry[4], s};
+
+endmodule
+
+
+// alu işlemleri burda seçiliyo
+module alu_4bit (
+    input  logic [3:0] A,
+    input  logic [3:0] B,
+    input  logic [1:0] sel,
+    output logic [4:0] result
+);
+
+    logic [4:0] addsub_result;
+
+    adder_subtractor_4bit u0 (
+        .A(A),
+        .B(B),
+        .sub(sel[0]),
+        .result(addsub_result)
+    );
+
+    always_comb begin
+        case (sel)
+            2'b00: result = addsub_result;       // toplama
+            2'b01: result = {1'b0, A & B};       // and
+            2'b10: result = {1'b0, A | B};       // or
+            2'b11: result = addsub_result;       // cikarma
+            default: result = 5'b00000;
+        endcase
+    end
+
+endmodule
